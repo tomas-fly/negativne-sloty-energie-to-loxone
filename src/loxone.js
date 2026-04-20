@@ -1,23 +1,22 @@
-const axios = require('axios')
+const dgram = require('dgram')
 
 function getConfig(override) {
   return {
     ip:   (override && override.ip)   || process.env.LOXONE_IP,
-    user: (override && override.user) || process.env.LOXONE_USER,
-    pass: (override && override.pass) || process.env.LOXONE_PASS,
+    port: (override && override.port) || parseInt(process.env.LOXONE_UDP_PORT, 10) || 7777,
   }
 }
 
-async function pushOne(name, value, cfg) {
-  const url = `http://${cfg.ip}/dev/sps/io/${name}/${value}`
-  try {
-    await axios.get(url, {
-      auth: { username: cfg.user, password: cfg.pass },
-      timeout: 5000,
+function pushOne(name, value, cfg) {
+  return new Promise((resolve) => {
+    const client = dgram.createSocket('udp4')
+    const message = Buffer.from(`\\${name}\\${value}\\`)
+    client.send(message, cfg.port, cfg.ip, (err) => {
+      client.close()
+      if (err) console.warn(`[loxone] failed to set ${name}=${value}: ${err.message}`)
+      resolve()
     })
-  } catch (err) {
-    console.warn(`[loxone] failed to set ${name}=${value}: ${err.message}`)
-  }
+  })
 }
 
 async function pushDaySchedule(slots, configOverride) {

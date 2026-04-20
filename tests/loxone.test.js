@@ -1,14 +1,5 @@
-const nock = require('nock')
+const dgram = require('dgram')
 const { pushDaySchedule, pushCurrentState } = require('../src/loxone')
-
-const config = {
-  ip: '192.168.1.100',
-  user: 'admin',
-  pass: 'secret',
-}
-
-beforeEach(() => nock.cleanAll())
-afterAll(() => nock.restore())
 
 function makeSlots(negativePeriods = []) {
   return Array.from({ length: 96 }, (_, i) => {
@@ -20,42 +11,57 @@ function makeSlots(negativePeriods = []) {
   })
 }
 
-test('pushDaySchedule sends one request per slot with correct name and value', async () => {
-  const slots = makeSlots([2]) // slot_0015 should be 1, rest 0
-  const interceptors = slots.map(s =>
-    nock(`http://${config.ip}`)
-      .get(`/dev/sps/io/slot_${s.slot}/${s.negative ? 1 : 0}`)
-      .basicAuth({ user: config.user, pass: config.pass })
-      .reply(200, 'OK')
-  )
+function createUdpServer() {
+  return new Promise((resolve) => {
+    const server = dgram.createSocket('udp4')
+    const received = []
+    server.on('message', (msg) => received.push(msg.toString()))
+    server.bind(0, '127.0.0.1', () => resolve({ server, received, port: server.address().port }))
+  })
+}
 
-  await pushDaySchedule(slots, config)
+function waitForPackets(received, count, timeout = 2000) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeout
+    const check = () => {
+      if (received.length >= count) return resolve()
+      if (Date.now() > deadline) return reject(new Error(`Timeout: got ${received.length}/${count} packets`))
+      setTimeout(check, 10)
+    }
+    check()
+  })
+}
 
-  interceptors.forEach(i => expect(i.isDone()).toBe(true))
-})
+function closeServer(server) {
+  return new Promise((resolve) => server.close(resolve))
+}
+
+test('pushDaySchedule sends correct UDP packet per slot', async () => {
+  const { server, received, port } = await createUdpServer()
+  const slots = makeSlots([2]) // slot_0015 → 1, rest → 0
+
+  await pushDaySchedule(slots, { ip: '127.0.0.1', port })
+  await waitForPackets(received, 96)
+  await closeServer(server)
+
+  expect(received).toHaveLength(96)
+  expect(received).toContain('\\slot_0000\\0\\')
+  expect(received).toContain('\\slot_0015\\1\\')
+  expect(received).toContain('\\slot_2345\\0\\')
+}, 5000)
 
 test('pushCurrentState sends current_slot_negative and prebuffer_active', async () => {
-  const n = nock(`http://${config.ip}`)
-    .get('/dev/sps/io/current_slot_negative/1')
-    .basicAuth({ user: config.user, pass: config.pass })
-    .reply(200, 'OK')
-    .get('/dev/sps/io/prebuffer_active/0')
-    .basicAuth({ user: config.user, pass: config.pass })
-    .reply(200, 'OK')
+  const { server, received, port } = await createUdpServer()
 
-  await pushCurrentState(true, false, config)
+  await pushCurrentState(true, false, { ip: '127.0.0.1', port })
+  await waitForPackets(received, 2)
+  await closeServer(server)
 
-  expect(n.isDone()).toBe(true)
-})
+  expect(received).toContain('\\current_slot_negative\\1\\')
+  expect(received).toContain('\\prebuffer_active\\0\\')
+}, 5000)
 
-test('pushDaySchedule does not throw when a slot request fails', async () => {
+test('pushDaySchedule does not throw when host is unreachable', async () => {
   const slots = makeSlots()
-  // intercept only first slot, rest will fail
-  nock(`http://${config.ip}`)
-    .get(`/dev/sps/io/slot_0000/0`)
-    .basicAuth({ user: config.user, pass: config.pass })
-    .reply(200, 'OK')
-  // other 95 will get connection error — should not throw
-
-  await expect(pushDaySchedule(slots, config)).resolves.not.toThrow()
+  await expect(pushDaySchedule(slots, { ip: '127.0.0.1', port: 1 })).resolves.not.toThrow()
 })
