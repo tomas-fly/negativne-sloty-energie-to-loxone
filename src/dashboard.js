@@ -1,5 +1,6 @@
 const express = require('express')
 const { getCachedSlots } = require('./cron')
+const { fetchRange } = require('./okte')
 
 const app = express()
 
@@ -114,6 +115,145 @@ app.get('/', (req, res) => {
   </div>
 
   <div class="footer">Aktualizuje sa každú minútu</div>
+</body>
+</html>`)
+})
+
+// ── Weekly view helpers ──────────────────────────────────────────────────────
+
+function isoWeekDates(year, week) {
+  // Returns [Mon..Sun] as YYYY-MM-DD strings for the given ISO week
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const dayOfWeek = jan4.getUTCDay() || 7
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1) + (week - 1) * 7)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setUTCDate(monday.getUTCDate() + i)
+    return d.toISOString().slice(0, 10)
+  })
+}
+
+function currentISOWeek() {
+  const now = new Date()
+  const jan4 = new Date(Date.UTC(now.getUTCFullYear(), 0, 4))
+  const startOfWeek1 = new Date(jan4)
+  startOfWeek1.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() || 7) - 1))
+  const week = Math.floor((now - startOfWeek1) / (7 * 864e5)) + 1
+  return { year: now.getUTCFullYear(), week }
+}
+
+// Aggregate 96 x 15-min slots → 24 hourly buckets
+// A bucket is negative if ANY slot in it is negative
+function toHourlyBuckets(slots) {
+  const hours = Array.from({ length: 24 }, () => ({ negative: false, prices: [] }))
+  for (const s of slots) {
+    const h = parseInt(s.slot.slice(0, 2))
+    hours[h].prices.push(s.price)
+    if (s.negative) hours[h].negative = true
+  }
+  return hours.map(h => ({
+    negative: h.negative,
+    avg: h.prices.length ? h.prices.reduce((a, b) => a + b, 0) / h.prices.length : 0,
+  }))
+}
+
+function dayChart(date, slots) {
+  const dayNames = ['Ne','Po','Ut','St','Št','Pi','So']
+  const d = new Date(date + 'T12:00:00Z')
+  const dayName = dayNames[d.getUTCDay()]
+  const dayNum  = d.getUTCDate()
+  const month   = d.getUTCMonth() + 1
+
+  if (!slots || !slots.length) {
+    return `<div style="flex:1;min-width:120px;background:#1e1e1e;border-radius:8px;padding:8px">
+      <div style="font-size:12px;color:#666;margin-bottom:6px">${dayName} ${dayNum}.${month}.</div>
+      <div style="font-size:11px;color:#444">no data</div>
+    </div>`
+  }
+
+  const hours = toHourlyBuckets(slots)
+  const allPrices = hours.map(h => h.avg)
+  const minP = Math.min(...allPrices), maxP = Math.max(...allPrices)
+  const range = maxP - minP || 1
+  const negCount = slots.filter(s => s.negative).length
+
+  const bars = hours.map((h, i) => {
+    const color  = h.negative ? '#ef4444' : '#22c55e'
+    const height = 10 + 80 * (h.avg - minP) / range
+    const label  = `${String(i).padStart(2,'0')}:00  ${h.avg.toFixed(1)} €`
+    return `<div title="${label}" style="flex:1;height:${height.toFixed(1)}%;background:${color};margin:0 1px;align-self:flex-end"></div>`
+  }).join('')
+
+  return `<div style="flex:1;min-width:120px;background:#1e1e1e;border-radius:8px;padding:8px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:13px;font-weight:bold">${dayName} ${dayNum}.${month}.</span>
+      ${negCount > 0 ? `<span style="font-size:11px;color:#ef4444">${negCount} záp.</span>` : '<span style="font-size:11px;color:#22c55e">✓</span>'}
+    </div>
+    <div style="display:flex;align-items:flex-end;height:60px;gap:0">${bars}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:3px">
+      <span style="font-size:9px;color:#555">00</span>
+      <span style="font-size:9px;color:#555">12</span>
+      <span style="font-size:9px;color:#555">24</span>
+    </div>
+  </div>`
+}
+
+app.get('/week', async (req, res) => {
+  const { year: curYear, week: curWeek } = currentISOWeek()
+  const year = parseInt(req.query.year) || curYear
+  const week = parseInt(req.query.week) || curWeek
+
+  const prevWeek = week === 1 ? { year: year - 1, week: 52 } : { year, week: week - 1 }
+  const nextWeek = week === 52 ? { year: year + 1, week: 1 } : { year, week: week + 1 }
+
+  const dates = isoWeekDates(year, week)
+  const from = dates[0], to = dates[6]
+
+  let byDay = {}, error = null
+  try {
+    byDay = await fetchRange(from, to)
+  } catch (err) {
+    error = err.message
+  }
+
+  const charts = dates.map(d => dayChart(d, byDay[d])).join('')
+
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Týždenný prehľad</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0 }
+    body { font-family: sans-serif; background: #111; color: #eee; padding: 12px }
+    h2 { font-size: 15px; margin-bottom: 12px; color: #aaa; font-weight: normal }
+    .nav { display: flex; align-items: center; gap: 12px; margin-bottom: 14px }
+    .nav a { color: #aaa; text-decoration: none; font-size: 20px; padding: 4px 8px }
+    .nav a:hover { color: #fff }
+    .week-label { font-size: 15px; font-weight: bold }
+    .days { display: flex; gap: 8px; flex-wrap: wrap }
+    .legend { display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: #888 }
+    .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle }
+    .error { color: #ef4444; font-size: 13px; margin: 10px 0 }
+    .back { display: inline-block; margin-top: 14px; font-size: 12px; color: #555; text-decoration: none }
+    .back:hover { color: #aaa }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/week?year=${prevWeek.year}&week=${prevWeek.week}">‹</a>
+    <span class="week-label">Týždeň ${week} / ${year} &nbsp;<span style="font-size:12px;color:#666">${from} – ${to}</span></span>
+    <a href="/week?year=${nextWeek.year}&week=${nextWeek.week}">›</a>
+  </nav>
+  ${error ? `<div class="error">Chyba: ${error}</div>` : ''}
+  <div class="days">${charts}</div>
+  <div class="legend">
+    <div><span style="background:#22c55e"></span>kladná cena</div>
+    <div><span style="background:#ef4444"></span>záporná cena (aspoň 1 slot v hodine)</div>
+  </div>
+  <a class="back" href="/">← Zajtrajší deň</a>
 </body>
 </html>`)
 })

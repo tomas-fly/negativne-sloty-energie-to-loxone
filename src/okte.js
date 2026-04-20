@@ -67,4 +67,45 @@ async function fetchSlots(date, baseUrl) {
   })
 }
 
-module.exports = { fetchSlots, tomorrow, periodToHHMM }
+/**
+ * Fetches all slots for a date range (e.g. whole week).
+ * Returns object keyed by YYYY-MM-DD, each value is array of slot objects.
+ * @param {string} from - YYYY-MM-DD
+ * @param {string} to   - YYYY-MM-DD
+ * @param {string} baseUrl - override for testing
+ * @returns {Promise<Object.<string, Array>>}
+ */
+async function fetchRange(from, to, baseUrl) {
+  const url = baseUrl || process.env.OKTE_BASE_URL
+  let resp
+  try {
+    resp = await axios.get(`${url}/dam/results`, {
+      params: { deliveryDayFrom: from, deliveryDayTo: to },
+    })
+  } catch (err) {
+    const status = err.response ? err.response.status : 'unknown'
+    throw new Error(`OKTE API error: ${status}`)
+  }
+
+  const data = resp.data
+  if (!Array.isArray(data)) throw new Error('OKTE response is not an array')
+
+  const byDay = {}
+  for (const item of data) {
+    const period = item[PERIOD_FIELD]
+    const price  = item[PRICE_FIELD]
+    const day    = item.deliveryDay
+    if (typeof period !== 'number' || typeof price !== 'number' || !day) continue
+    if (!byDay[day]) byDay[day] = []
+    byDay[day].push({ slot: periodToHHMM(period), price, negative: price < 0, period })
+  }
+
+  // sort slots within each day by period
+  for (const day of Object.keys(byDay)) {
+    byDay[day].sort((a, b) => a.period - b.period)
+  }
+
+  return byDay
+}
+
+module.exports = { fetchSlots, fetchRange, tomorrow, periodToHHMM }
