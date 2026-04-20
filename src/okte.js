@@ -1,8 +1,8 @@
 const axios = require('axios')
 
 // ⚠️ Verify these field names against the real API response
-const PERIOD_FIELD = 'deliveryPeriod'
-const PRICE_FIELD  = 'finalPrice'
+const PERIOD_FIELD = 'period'
+const PRICE_FIELD  = 'price'
 
 /**
  * Returns the YYYY-MM-DD string for tomorrow.

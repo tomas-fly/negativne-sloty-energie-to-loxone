@@ -5,9 +5,9 @@ const BASE_URL = 'https://test-isot.okte.sk/api/v1'
 
 // minimal 3-slot fixture (real calls return 96)
 const fixture = [
-  { deliveryDay: '2025-04-24', deliveryPeriod: 1, finalPrice: 45.23 },
-  { deliveryDay: '2025-04-24', deliveryPeriod: 2, finalPrice: -12.5 },
-  { deliveryDay: '2025-04-24', deliveryPeriod: 3, finalPrice: 0.01 },
+  { deliveryDay: '2025-04-24', period: 1, price: 45.23 },
+  { deliveryDay: '2025-04-24', period: 2, price: -12.5 },
+  { deliveryDay: '2025-04-24', period: 3, price: 0.01 },
 ]
 
 beforeEach(() => nock.cleanAll())
