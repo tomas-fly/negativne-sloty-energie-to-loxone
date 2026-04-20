@@ -43,7 +43,7 @@ async function runStateUpdate() {
 }
 
 function start() {
-  cron.schedule('5 13 * * *', runDailyFetch)
+  cron.schedule('1 13 * * *', runDailyFetch)
   cron.schedule('*/15 * * * *', runStateUpdate)
 
   if (cachedDate !== tomorrow()) {
