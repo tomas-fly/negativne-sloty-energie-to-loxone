@@ -8,12 +8,14 @@ const PRICE_FIELD  = 'finalPrice'
  * Returns the YYYY-MM-DD string for tomorrow.
  */
 function tomorrow() {
-  const now = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Bratislava' }))
-  now.setDate(now.getDate() + 1)
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Bratislava',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(d)
+  const get = type => parts.find(p => p.type === type).value
+  return `${get('year')}-${get('month')}-${get('day')}`
 }
 
 /**
