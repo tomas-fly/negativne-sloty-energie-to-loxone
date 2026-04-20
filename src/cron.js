@@ -48,7 +48,7 @@ function start() {
   const todayStr = new Date().toISOString().slice(0, 10)
   if (cachedDate !== todayStr) {
     console.log('[cron] startup: no cached data, triggering immediate fetch')
-    runDailyFetch().then(() => runStateUpdate())
+    runDailyFetch().then(() => runStateUpdate()).catch(err => console.error('[cron] startup error:', err.message))
   }
 }
 
