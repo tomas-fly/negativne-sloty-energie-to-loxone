@@ -32,36 +32,31 @@ function periodToHHMM(period) {
  */
 async function fetchSlots(date, baseUrl) {
   const url = baseUrl || process.env.OKTE_BASE_URL
+  let resp
   try {
-    const resp = await axios.get(`${url}/api/v1/dam/results`, {
+    resp = await axios.get(`${url}/api/v1/dam/results`, {
       params: { deliveryDayFrom: date, deliveryDayTo: date },
     })
-
-    if (resp.status !== 200) {
-      throw new Error(`OKTE API error: ${resp.status}`)
-    }
-
-    const data = resp.data
-    if (!Array.isArray(data)) {
-      throw new Error('OKTE response is not an array')
-    }
-
-    return data.map(item => {
-      const period = item[PERIOD_FIELD]
-      const price  = item[PRICE_FIELD]
-      return {
-        slot:     periodToHHMM(period),
-        price:    price,
-        negative: price < 0,
-        period,
-      }
-    })
-  } catch (error) {
-    if (error.response && error.response.status) {
-      throw new Error(`OKTE API error: ${error.response.status}`)
-    }
-    throw error
+  } catch (err) {
+    const status = err.response ? err.response.status : 'unknown'
+    throw new Error(`OKTE API error: ${status}`)
   }
+
+  const data = resp.data
+  if (!Array.isArray(data)) {
+    throw new Error('OKTE response is not an array')
+  }
+
+  return data.map(item => {
+    const period = item[PERIOD_FIELD]
+    const price  = item[PRICE_FIELD]
+    return {
+      slot:     periodToHHMM(period),
+      price:    price,
+      negative: price < 0,
+      period,
+    }
+  })
 }
 
 module.exports = { fetchSlots, tomorrow, periodToHHMM }
