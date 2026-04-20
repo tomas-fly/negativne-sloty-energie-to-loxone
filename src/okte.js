@@ -8,9 +8,12 @@ const PRICE_FIELD  = 'finalPrice'
  * Returns the YYYY-MM-DD string for tomorrow.
  */
 function tomorrow() {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10)
+  const now = new Date(new Date().toLocaleString('en-CA', { timeZone: 'Europe/Bratislava' }))
+  now.setDate(now.getDate() + 1)
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 /**
@@ -34,7 +37,7 @@ async function fetchSlots(date, baseUrl) {
   const url = baseUrl || process.env.OKTE_BASE_URL
   let resp
   try {
-    resp = await axios.get(`${url}/api/v1/dam/results`, {
+    resp = await axios.get(`${url}/dam/results`, {
       params: { deliveryDayFrom: date, deliveryDayTo: date },
     })
   } catch (err) {
@@ -50,6 +53,9 @@ async function fetchSlots(date, baseUrl) {
   return data.map(item => {
     const period = item[PERIOD_FIELD]
     const price  = item[PRICE_FIELD]
+    if (typeof period !== 'number' || typeof price !== 'number') {
+      throw new Error(`OKTE response item missing expected fields: ${JSON.stringify(item)}`)
+    }
     return {
       slot:     periodToHHMM(period),
       price:    price,

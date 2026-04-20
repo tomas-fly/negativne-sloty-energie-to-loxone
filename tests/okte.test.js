@@ -1,7 +1,7 @@
 const nock = require('nock')
 const { fetchSlots } = require('../src/okte')
 
-const BASE_URL = 'https://test-isot.okte.sk'
+const BASE_URL = 'https://test-isot.okte.sk/api/v1'
 
 // minimal 3-slot fixture (real calls return 96)
 const fixture = [
@@ -15,7 +15,7 @@ afterAll(() => nock.restore())
 
 test('fetchSlots returns array of slot objects with HHMM and negative flag', async () => {
   nock(BASE_URL)
-    .get('/api/v1/dam/results')
+    .get('/dam/results')
     .query({ deliveryDayFrom: '2025-04-24', deliveryDayTo: '2025-04-24' })
     .reply(200, fixture)
 
@@ -29,7 +29,7 @@ test('fetchSlots returns array of slot objects with HHMM and negative flag', asy
 
 test('fetchSlots throws on non-200 response', async () => {
   nock(BASE_URL)
-    .get('/api/v1/dam/results')
+    .get('/dam/results')
     .query({ deliveryDayFrom: '2025-04-24', deliveryDayTo: '2025-04-24' })
     .reply(503, 'Service Unavailable')
 
@@ -38,7 +38,7 @@ test('fetchSlots throws on non-200 response', async () => {
 
 test('fetchSlots throws when response is not an array', async () => {
   nock(BASE_URL)
-    .get('/api/v1/dam/results')
+    .get('/dam/results')
     .query({ deliveryDayFrom: '2025-04-24', deliveryDayTo: '2025-04-24' })
     .reply(200, { error: 'unexpected' })
 

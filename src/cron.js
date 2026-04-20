@@ -7,7 +7,7 @@ const { pushDaySchedule, pushCurrentState } = require('./loxone')
 let cachedSlots = []
 let cachedDate  = null
 
-const PREBUFFER_MINUTES = parseInt(process.env.PREBUFFER_MINUTES || '60', 10)
+const PREBUFFER_MINUTES = parseInt(process.env.PREBUFFER_MINUTES, 10) || 60
 
 async function runDailyFetch(attempt = 1) {
   const date = tomorrow()
@@ -45,8 +45,7 @@ function start() {
   cron.schedule('5 13 * * *', runDailyFetch)
   cron.schedule('*/15 * * * *', runStateUpdate)
 
-  const todayStr = new Date().toISOString().slice(0, 10)
-  if (cachedDate !== todayStr) {
+  if (cachedDate !== tomorrow()) {
     console.log('[cron] startup: no cached data, triggering immediate fetch')
     runDailyFetch().then(() => runStateUpdate()).catch(err => console.error('[cron] startup error:', err.message))
   }

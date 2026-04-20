@@ -3,7 +3,11 @@
  * Slot 0 = 00:00–00:15, slot 95 = 23:45–00:00
  */
 function slotIndex(date) {
-  const minutesSinceMidnight = date.getHours() * 60 + date.getMinutes()
+  const bratislavaStr = date.toLocaleString('en-CA', { timeZone: 'Europe/Bratislava', hour12: false })
+  // bratislavaStr is like "2025-04-24, 14:35:00"
+  const timePart = bratislavaStr.split(', ')[1] || bratislavaStr
+  const [hh, mm] = timePart.split(':').map(Number)
+  const minutesSinceMidnight = hh * 60 + mm
   return Math.floor(minutesSinceMidnight / 15)
 }
 
@@ -28,7 +32,10 @@ function currentSlotNegative(slots, now) {
 function prebufferActive(slots, now, prebufferMinutes) {
   if (!slots.length) return false
 
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const bratislavaStr = now.toLocaleString('en-CA', { timeZone: 'Europe/Bratislava', hour12: false })
+  const timePart = bratislavaStr.split(', ')[1] || bratislavaStr
+  const [bh, bm] = timePart.split(':').map(Number)
+  const nowMinutes = bh * 60 + bm
   const currentIdx = slotIndex(now)
   if (slots[currentIdx] && slots[currentIdx].negative) return false
 
