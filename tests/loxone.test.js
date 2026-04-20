@@ -11,57 +11,63 @@ function makeSlots(negativePeriods = []) {
   })
 }
 
-function createUdpServer() {
-  return new Promise((resolve) => {
-    const server = dgram.createSocket('udp4')
-    const received = []
-    server.on('message', (msg) => received.push(msg.toString()))
-    server.bind(0, '127.0.0.1', () => resolve({ server, received, port: server.address().port }))
+function createUdpServers(count, basePort) {
+  const servers = []
+  const received = {} // port → value string
+  const promises = Array.from({ length: count }, (_, i) => {
+    const port = basePort + i
+    return new Promise((resolve) => {
+      const server = dgram.createSocket('udp4')
+      server.on('message', (msg) => { received[port] = msg.toString() })
+      server.bind(port, '127.0.0.1', () => { servers.push(server); resolve() })
+    })
   })
+  return Promise.all(promises).then(() => ({ servers, received }))
 }
 
-function waitForPackets(received, count, timeout = 2000) {
+function waitForPackets(received, count, timeout = 3000) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeout
     const check = () => {
-      if (received.length >= count) return resolve()
-      if (Date.now() > deadline) return reject(new Error(`Timeout: got ${received.length}/${count} packets`))
+      if (Object.keys(received).length >= count) return resolve()
+      if (Date.now() > deadline) return reject(new Error(`Timeout: got ${Object.keys(received).length}/${count} packets`))
       setTimeout(check, 10)
     }
     check()
   })
 }
 
-function closeServer(server) {
-  return new Promise((resolve) => server.close(resolve))
+function closeAll(servers) {
+  return Promise.all(servers.map(s => new Promise(resolve => s.close(resolve))))
 }
 
-test('pushDaySchedule sends correct UDP packet per slot', async () => {
-  const { server, received, port } = await createUdpServer()
-  const slots = makeSlots([2]) // slot_0015 → 1, rest → 0
+const BASE_PORT = 15600 // high range to avoid conflicts
 
-  await pushDaySchedule(slots, { ip: '127.0.0.1', port })
+test('pushDaySchedule sends value 0 or 1 to correct port per slot', async () => {
+  const { servers, received } = await createUdpServers(96, BASE_PORT)
+  const slots = makeSlots([2]) // slot index 1 (slot_0015) → negative → port BASE+1
+
+  await pushDaySchedule(slots, { ip: '127.0.0.1', basePort: BASE_PORT })
   await waitForPackets(received, 96)
-  await closeServer(server)
+  await closeAll(servers)
 
-  expect(received).toHaveLength(96)
-  expect(received).toContain('\\slot_0000\\0\\')
-  expect(received).toContain('\\slot_0015\\1\\')
-  expect(received).toContain('\\slot_2345\\0\\')
+  expect(received[BASE_PORT]).toBe('0')       // slot_0000 positive
+  expect(received[BASE_PORT + 1]).toBe('1')   // slot_0015 negative
+  expect(received[BASE_PORT + 95]).toBe('0')  // slot_2345 positive
 }, 5000)
 
-test('pushCurrentState sends current_slot_negative and prebuffer_active', async () => {
-  const { server, received, port } = await createUdpServer()
+test('pushCurrentState sends to basePort+96 and basePort+97', async () => {
+  const { servers, received } = await createUdpServers(2, BASE_PORT + 96)
 
-  await pushCurrentState(true, false, { ip: '127.0.0.1', port })
+  await pushCurrentState(true, false, { ip: '127.0.0.1', basePort: BASE_PORT })
   await waitForPackets(received, 2)
-  await closeServer(server)
+  await closeAll(servers)
 
-  expect(received).toContain('\\current_slot_negative\\1\\')
-  expect(received).toContain('\\prebuffer_active\\0\\')
+  expect(received[BASE_PORT + 96]).toBe('1')  // current_slot_negative
+  expect(received[BASE_PORT + 97]).toBe('0')  // prebuffer_active
 }, 5000)
 
 test('pushDaySchedule does not throw when host is unreachable', async () => {
   const slots = makeSlots()
-  await expect(pushDaySchedule(slots, { ip: '127.0.0.1', port: 1 })).resolves.not.toThrow()
+  await expect(pushDaySchedule(slots, { ip: '127.0.0.1', basePort: 1 })).resolves.not.toThrow()
 })
