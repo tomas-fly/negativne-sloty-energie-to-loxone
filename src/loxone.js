@@ -44,4 +44,15 @@ async function pushCurrentState(isNegative, prebuffer, configOverride) {
   ])
 }
 
-module.exports = { pushDaySchedule, pushCurrentState }
+/**
+ * Pushes whether tomorrow has any negative slots at all.
+ * Format: "HN=1" / "HN=0"
+ * Loxone Command Recognition: "HN=<v>"
+ */
+async function pushHasNegative(slots, configOverride) {
+  const cfg = getConfig(configOverride)
+  const hasNegative = slots.some(s => s.negative) ? 1 : 0
+  await sendUdp(`HN=${hasNegative}`, cfg)
+}
+
+module.exports = { pushDaySchedule, pushCurrentState, pushHasNegative }

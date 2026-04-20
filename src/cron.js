@@ -2,7 +2,7 @@ require('dotenv').config()
 const cron = require('node-cron')
 const { fetchSlots, tomorrow } = require('./okte')
 const { currentSlotNegative, prebufferActive } = require('./schedule')
-const { pushDaySchedule, pushCurrentState } = require('./loxone')
+const { pushDaySchedule, pushCurrentState, pushHasNegative } = require('./loxone')
 
 let cachedSlots = []
 let cachedDate  = null
@@ -17,6 +17,7 @@ async function runDailyFetch(attempt = 1) {
     cachedSlots = slots
     cachedDate  = date
     await pushDaySchedule(slots)
+    await pushHasNegative(slots)
     console.log(`[cron] pushed ${slots.length} slots to Loxone for ${date}`)
   } catch (err) {
     console.error(`[cron] daily fetch failed: ${err.message}`)

@@ -99,3 +99,4 @@ slot_2330               2330=<v>
 slot_2345               2345=<v>
 current_slot_negative   CSN=<v>
 prebuffer_active        PBA=<v>
+has_negative            HN=<v>
