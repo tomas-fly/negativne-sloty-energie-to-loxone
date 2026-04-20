@@ -11,63 +11,59 @@ function makeSlots(negativePeriods = []) {
   })
 }
 
-function createUdpServers(count, basePort) {
-  const servers = []
-  const received = {} // port → value string
-  const promises = Array.from({ length: count }, (_, i) => {
-    const port = basePort + i
-    return new Promise((resolve) => {
-      const server = dgram.createSocket('udp4')
-      server.on('message', (msg) => { received[port] = msg.toString() })
-      server.bind(port, '127.0.0.1', () => { servers.push(server); resolve() })
-    })
+function createUdpServer(port) {
+  return new Promise((resolve) => {
+    const server = dgram.createSocket('udp4')
+    const received = []
+    server.on('message', (msg) => received.push(msg.toString()))
+    server.bind(port, '127.0.0.1', () => resolve({ server, received }))
   })
-  return Promise.all(promises).then(() => ({ servers, received }))
 }
 
 function waitForPackets(received, count, timeout = 3000) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeout
     const check = () => {
-      if (Object.keys(received).length >= count) return resolve()
-      if (Date.now() > deadline) return reject(new Error(`Timeout: got ${Object.keys(received).length}/${count} packets`))
+      if (received.length >= count) return resolve()
+      if (Date.now() > deadline) return reject(new Error(`Timeout: got ${received.length}/${count}`))
       setTimeout(check, 10)
     }
     check()
   })
 }
 
-function closeAll(servers) {
-  return Promise.all(servers.map(s => new Promise(resolve => s.close(resolve))))
+function closeServer(server) {
+  return new Promise((resolve) => server.close(resolve))
 }
 
-const BASE_PORT = 15600 // high range to avoid conflicts
+const TEST_PORT = 15700
 
-test('pushDaySchedule sends value 0 or 1 to correct port per slot', async () => {
-  const { servers, received } = await createUdpServers(96, BASE_PORT)
-  const slots = makeSlots([2]) // slot index 1 (slot_0015) → negative → port BASE+1
+test('pushDaySchedule sends HHMM=value format on single port', async () => {
+  const { server, received } = await createUdpServer(TEST_PORT)
+  const slots = makeSlots([2]) // slot_0015 (index 1) → negative
 
-  await pushDaySchedule(slots, { ip: '127.0.0.1', basePort: BASE_PORT })
+  await pushDaySchedule(slots, { ip: '127.0.0.1', port: TEST_PORT })
   await waitForPackets(received, 96)
-  await closeAll(servers)
+  await closeServer(server)
 
-  expect(received[BASE_PORT]).toBe('0')       // slot_0000 positive
-  expect(received[BASE_PORT + 1]).toBe('1')   // slot_0015 negative
-  expect(received[BASE_PORT + 95]).toBe('0')  // slot_2345 positive
+  expect(received).toHaveLength(96)
+  expect(received).toContain('0000=0')
+  expect(received).toContain('0015=1')
+  expect(received).toContain('2345=0')
 }, 5000)
 
-test('pushCurrentState sends to basePort+96 and basePort+97', async () => {
-  const { servers, received } = await createUdpServers(2, BASE_PORT + 96)
+test('pushCurrentState sends CSN and PBA codes', async () => {
+  const { server, received } = await createUdpServer(TEST_PORT)
 
-  await pushCurrentState(true, false, { ip: '127.0.0.1', basePort: BASE_PORT })
+  await pushCurrentState(true, false, { ip: '127.0.0.1', port: TEST_PORT })
   await waitForPackets(received, 2)
-  await closeAll(servers)
+  await closeServer(server)
 
-  expect(received[BASE_PORT + 96]).toBe('1')  // current_slot_negative
-  expect(received[BASE_PORT + 97]).toBe('0')  // prebuffer_active
+  expect(received).toContain('CSN=1')
+  expect(received).toContain('PBA=0')
 }, 5000)
 
 test('pushDaySchedule does not throw when host is unreachable', async () => {
   const slots = makeSlots()
-  await expect(pushDaySchedule(slots, { ip: '127.0.0.1', basePort: 1 })).resolves.not.toThrow()
+  await expect(pushDaySchedule(slots, { ip: '127.0.0.1', port: 1 })).resolves.not.toThrow()
 })

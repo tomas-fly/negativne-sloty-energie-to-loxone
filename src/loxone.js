@@ -1,48 +1,46 @@
 const dgram = require('dgram')
 
-// Slot index 0..95 → port BASE+0..BASE+95
-// current_slot_negative → port BASE+96
-// prebuffer_active      → port BASE+97
-const SLOT_COUNT = 96
-
 function getConfig(override) {
   return {
-    ip:       (override && override.ip)       || process.env.LOXONE_IP,
-    basePort: (override && override.basePort) || parseInt(process.env.LOXONE_UDP_BASE_PORT, 10) || 5600,
+    ip:   (override && override.ip)   || process.env.LOXONE_IP,
+    port: (override && override.port) || parseInt(process.env.LOXONE_UDP_PORT, 10) || 5600,
   }
 }
 
-function sendUdp(value, port, ip) {
+function sendUdp(message, cfg) {
   return new Promise((resolve) => {
     const client = dgram.createSocket('udp4')
-    const data = Buffer.from('' + value)
-    client.send(data, port, ip, (err) => {
+    const data = Buffer.from(message)
+    client.send(data, cfg.port, cfg.ip, (err) => {
       client.close()
-      if (err) console.warn(`[loxone] UDP send to port ${port} failed: ${err.message}`)
+      if (err) console.warn(`[loxone] UDP send failed (${message}): ${err.message}`)
       resolve()
     })
   })
 }
 
 /**
- * Pushes all 96 slot boolean values to Loxone.
- * slot index 0 (slot_0000) → basePort, index 1 (slot_0015) → basePort+1, ...
+ * Pushes all 96 slot values to a single Loxone UDP port.
+ * Format: "HHMM=0" or "HHMM=1"
+ * Loxone Command Recognition per input: "0000=<v>", "0015=<v>", etc.
  */
 async function pushDaySchedule(slots, configOverride) {
   const cfg = getConfig(configOverride)
   await Promise.all(
-    slots.map((s, i) => sendUdp(s.negative ? 1 : 0, cfg.basePort + i, cfg.ip))
+    slots.map(s => sendUdp(`${s.slot}=${s.negative ? 1 : 0}`, cfg))
   )
 }
 
 /**
- * Pushes current_slot_negative (basePort+96) and prebuffer_active (basePort+97).
+ * Pushes current state flags.
+ * Format: "CSN=0" / "CSN=1" and "PBA=0" / "PBA=1"
+ * Loxone Command Recognition: "CSN=<v>" and "PBA=<v>"
  */
 async function pushCurrentState(isNegative, prebuffer, configOverride) {
   const cfg = getConfig(configOverride)
   await Promise.all([
-    sendUdp(isNegative ? 1 : 0, cfg.basePort + SLOT_COUNT,     cfg.ip),
-    sendUdp(prebuffer  ? 1 : 0, cfg.basePort + SLOT_COUNT + 1, cfg.ip),
+    sendUdp(`CSN=${isNegative ? 1 : 0}`, cfg),
+    sendUdp(`PBA=${prebuffer  ? 1 : 0}`, cfg),
   ])
 }
 

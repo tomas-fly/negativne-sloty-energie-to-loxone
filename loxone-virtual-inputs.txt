@@ -1,98 +1,101 @@
-port 5600	 slot_0000
-port 5601	 slot_0015
-port 5602	 slot_0030
-port 5603	 slot_0045
-port 5604	 slot_0100
-port 5605	 slot_0115
-port 5606	 slot_0130
-port 5607	 slot_0145
-port 5608	 slot_0200
-port 5609	 slot_0215
-port 5610	 slot_0230
-port 5611	 slot_0245
-port 5612	 slot_0300
-port 5613	 slot_0315
-port 5614	 slot_0330
-port 5615	 slot_0345
-port 5616	 slot_0400
-port 5617	 slot_0415
-port 5618	 slot_0430
-port 5619	 slot_0445
-port 5620	 slot_0500
-port 5621	 slot_0515
-port 5622	 slot_0530
-port 5623	 slot_0545
-port 5624	 slot_0600
-port 5625	 slot_0615
-port 5626	 slot_0630
-port 5627	 slot_0645
-port 5628	 slot_0700
-port 5629	 slot_0715
-port 5630	 slot_0730
-port 5631	 slot_0745
-port 5632	 slot_0800
-port 5633	 slot_0815
-port 5634	 slot_0830
-port 5635	 slot_0845
-port 5636	 slot_0900
-port 5637	 slot_0915
-port 5638	 slot_0930
-port 5639	 slot_0945
-port 5640	 slot_1000
-port 5641	 slot_1015
-port 5642	 slot_1030
-port 5643	 slot_1045
-port 5644	 slot_1100
-port 5645	 slot_1115
-port 5646	 slot_1130
-port 5647	 slot_1145
-port 5648	 slot_1200
-port 5649	 slot_1215
-port 5650	 slot_1230
-port 5651	 slot_1245
-port 5652	 slot_1300
-port 5653	 slot_1315
-port 5654	 slot_1330
-port 5655	 slot_1345
-port 5656	 slot_1400
-port 5657	 slot_1415
-port 5658	 slot_1430
-port 5659	 slot_1445
-port 5660	 slot_1500
-port 5661	 slot_1515
-port 5662	 slot_1530
-port 5663	 slot_1545
-port 5664	 slot_1600
-port 5665	 slot_1615
-port 5666	 slot_1630
-port 5667	 slot_1645
-port 5668	 slot_1700
-port 5669	 slot_1715
-port 5670	 slot_1730
-port 5671	 slot_1745
-port 5672	 slot_1800
-port 5673	 slot_1815
-port 5674	 slot_1830
-port 5675	 slot_1845
-port 5676	 slot_1900
-port 5677	 slot_1915
-port 5678	 slot_1930
-port 5679	 slot_1945
-port 5680	 slot_2000
-port 5681	 slot_2015
-port 5682	 slot_2030
-port 5683	 slot_2045
-port 5684	 slot_2100
-port 5685	 slot_2115
-port 5686	 slot_2130
-port 5687	 slot_2145
-port 5688	 slot_2200
-port 5689	 slot_2215
-port 5690	 slot_2230
-port 5691	 slot_2245
-port 5692	 slot_2300
-port 5693	 slot_2315
-port 5694	 slot_2330
-port 5695	 slot_2345
-port 5696	 current_slot_negative
-port 5697	 prebuffer_active
+# Loxone Virtual UDP Input setup — všetky na PORT 5600
+# Nazov vstupu          Command Recognition
+
+slot_0000               0000=<v>
+slot_0015               0015=<v>
+slot_0030               0030=<v>
+slot_0045               0045=<v>
+slot_0100               0100=<v>
+slot_0115               0115=<v>
+slot_0130               0130=<v>
+slot_0145               0145=<v>
+slot_0200               0200=<v>
+slot_0215               0215=<v>
+slot_0230               0230=<v>
+slot_0245               0245=<v>
+slot_0300               0300=<v>
+slot_0315               0315=<v>
+slot_0330               0330=<v>
+slot_0345               0345=<v>
+slot_0400               0400=<v>
+slot_0415               0415=<v>
+slot_0430               0430=<v>
+slot_0445               0445=<v>
+slot_0500               0500=<v>
+slot_0515               0515=<v>
+slot_0530               0530=<v>
+slot_0545               0545=<v>
+slot_0600               0600=<v>
+slot_0615               0615=<v>
+slot_0630               0630=<v>
+slot_0645               0645=<v>
+slot_0700               0700=<v>
+slot_0715               0715=<v>
+slot_0730               0730=<v>
+slot_0745               0745=<v>
+slot_0800               0800=<v>
+slot_0815               0815=<v>
+slot_0830               0830=<v>
+slot_0845               0845=<v>
+slot_0900               0900=<v>
+slot_0915               0915=<v>
+slot_0930               0930=<v>
+slot_0945               0945=<v>
+slot_1000               1000=<v>
+slot_1015               1015=<v>
+slot_1030               1030=<v>
+slot_1045               1045=<v>
+slot_1100               1100=<v>
+slot_1115               1115=<v>
+slot_1130               1130=<v>
+slot_1145               1145=<v>
+slot_1200               1200=<v>
+slot_1215               1215=<v>
+slot_1230               1230=<v>
+slot_1245               1245=<v>
+slot_1300               1300=<v>
+slot_1315               1315=<v>
+slot_1330               1330=<v>
+slot_1345               1345=<v>
+slot_1400               1400=<v>
+slot_1415               1415=<v>
+slot_1430               1430=<v>
+slot_1445               1445=<v>
+slot_1500               1500=<v>
+slot_1515               1515=<v>
+slot_1530               1530=<v>
+slot_1545               1545=<v>
+slot_1600               1600=<v>
+slot_1615               1615=<v>
+slot_1630               1630=<v>
+slot_1645               1645=<v>
+slot_1700               1700=<v>
+slot_1715               1715=<v>
+slot_1730               1730=<v>
+slot_1745               1745=<v>
+slot_1800               1800=<v>
+slot_1815               1815=<v>
+slot_1830               1830=<v>
+slot_1845               1845=<v>
+slot_1900               1900=<v>
+slot_1915               1915=<v>
+slot_1930               1930=<v>
+slot_1945               1945=<v>
+slot_2000               2000=<v>
+slot_2015               2015=<v>
+slot_2030               2030=<v>
+slot_2045               2045=<v>
+slot_2100               2100=<v>
+slot_2115               2115=<v>
+slot_2130               2130=<v>
+slot_2145               2145=<v>
+slot_2200               2200=<v>
+slot_2215               2215=<v>
+slot_2230               2230=<v>
+slot_2245               2245=<v>
+slot_2300               2300=<v>
+slot_2315               2315=<v>
+slot_2330               2330=<v>
+slot_2345               2345=<v>
+current_slot_negative   CSN=<v>
+prebuffer_active        PBA=<v>
